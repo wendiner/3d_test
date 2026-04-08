@@ -13,7 +13,7 @@
 #include <allegro5/allegro5.h>
 #include <allegro5/allegro_primitives.h>
 
-int main() {
+int main(int argc, char** argv) {
   al_init();
   al_init_primitives_addon();
 
@@ -28,32 +28,21 @@ int main() {
   bool done = false;
   ALLEGRO_EVENT event;
 
-  struct model triangle;
-  triangle.numLines = 3;
-  struct line path[3] = {
-    {
-      .start = {0, 50, 0},
-      .end = {50, -50, 0},
-      .color = al_map_rgb(0, 255, 0)
-    },
-    {
-      .start = {50, -50, 0},
-      .end = {-50, -50, 0},
-      .color = al_map_rgb(0, 255, 0)
-    },
-    {
-      .start = {-50, -50, 0},
-      .end = {0, 50, 0},
-      .color = al_map_rgb(0, 255, 0)
-    }
-  };
-  triangle.path = path;
-
-  struct xyz camera = {0, 0, -200};
-  struct xyz camera_direc = {0, 0, 0};
-  struct xyz plane = {0, 0, 100};
-  
+  struct xyz camera = {0, 101, -100};
+  struct xyz camera_direc = {M_PI / 4, 0, 0};
+  struct xyz plane = {0, 0, 100};  
   double rotx = M_PI / 100;
+  double scale = 100;
+
+  struct model ex;
+
+  FILE* fp = fopen(argv[1], "rb");
+  for (int i = 0; i < 5; i++)
+    fgetc(fp);
+  fread(&(ex.numLines), sizeof(unsigned int), 1, fp);
+  printf("I received %i lines!\n", ex.numLines);
+  ex.path = (struct line*) malloc(ex.numLines * sizeof(struct line));
+  fread(ex.path, sizeof(struct line), ex.numLines, fp);
 
   al_start_timer(timer);
   while(1) {
@@ -61,10 +50,10 @@ int main() {
 
     switch (event.type) {
       case ALLEGRO_EVENT_TIMER:
-        for (int i = 0; i < triangle.numLines; i++) {
-          struct line old = triangle.path[i];
-          rotate(&(old.start), &(triangle.path[i].start), 0, rotx, 0);
-          rotate(&(old.end), &(triangle.path[i].end), 0, rotx, 0);
+        for (int i = 0; i < ex.numLines; i++) {
+          struct line old = ex.path[i];
+          rotate(&(old.start), &(ex.path[i].start), 0, rotx, 0);
+          rotate(&(old.end), &(ex.path[i].end), 0, rotx, 0);
         }
         redraw = true;
         break;
@@ -79,13 +68,13 @@ int main() {
     if (redraw && al_is_event_queue_empty(queue)) {
       al_clear_to_color(al_map_rgb(0, 0, 0));
 
-      for (unsigned int i = 0; i < triangle.numLines; i++) {
+      for (unsigned int i = 0; i < ex.numLines; i++) {
         double start_xy[2];
-        project(start_xy, &(triangle.path[i].start), &camera, &camera_direc, &plane);
+        project(start_xy, &(ex.path[i].start), &camera, &camera_direc, &plane);
         double end_xy[2];
-        project(end_xy, &(triangle.path[i].end), &camera, &camera_direc, &plane);
+        project(end_xy, &(ex.path[i].end), &camera, &camera_direc, &plane);
 
-        al_draw_line(start_xy[0] + 256, start_xy[1] * -1 + 256, end_xy[0] + 256, end_xy[1] * -1 + 256, triangle.path[i].color, 1.0);
+        al_draw_line(start_xy[0] * scale + 256, start_xy[1] * -scale + 256, end_xy[0] * scale + 256, end_xy[1] * -scale + 256, ex.path[i].color, 1.0);
       }
 
       al_flip_display();

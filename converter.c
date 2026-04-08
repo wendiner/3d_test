@@ -17,23 +17,27 @@ struct vertex {
 
 struct vertex* seek(struct vertex* start, unsigned int ind) {
   struct vertex* ptr = start;
-  for (unsigned int i = 0; i <= ind; i++)
+  for (unsigned int i = 0; i < ind; i++)
     ptr = ptr->next;
 
   return ptr;
 }
 
+struct triangle {
+  struct line line1, line2, line3;
+  struct triangle* next;
+};
+
 int main(int argc, char** argv) {
   FILE* fp_inp = fopen(argv[1], "r");
   FILE* fp_out = fopen(argv[2], "w+");
 
-  unsigned int numVerts = 0;
   struct vertex *start, *old, *new;
+  struct triangle *tri_start, *tri_old, *tri_new;
+  unsigned int numLines;
   
   char prefix;
   double num1, num2, num3;
-
-  bool headerWritten = false;
 
   while (1) {
     fscanf(fp_inp, "%c %lf %lf %lf\n", &prefix, &num1, &num2, &num3);
@@ -55,22 +59,20 @@ int main(int argc, char** argv) {
           new->z = num3;
         }
 
-        numVerts++;
         break;
       case 'f':
-        if (!headerWritten) {
-          headerWritten = true;
-          fprintf(fp_out, "MODEL");
-          printf("I counted %i vertices!\n", numVerts);
-          numVerts /= 3;
-          fwrite(&numVerts, sizeof(unsigned int), 1, fp_out);
-        }
-
-        printf("%i %i %i\n", (unsigned int) num1, (unsigned int) num2, (unsigned int) num3);
-
         struct vertex* vert1 = seek(start, (unsigned int) (num1 - 1));
         struct vertex* vert2 = seek(start, (unsigned int) (num2 - 1));
         struct vertex* vert3 = seek(start, (unsigned int) (num3 - 1));
+
+        struct triangle* current = (struct triangle*) malloc(sizeof(struct triangle));
+
+        if (tri_new) {
+          tri_old = tri_new;
+          tri_old->next = current;
+        } else {
+          tri_start = current;
+        }
 
         struct line lines[3] = {
           {
@@ -90,11 +92,28 @@ int main(int argc, char** argv) {
           }
         };
 
-        fwrite(lines, sizeof(struct line), 3, fp_out);
+        current->line1 = lines[0];
+        current->line2 = lines[1];
+        current->line3 = lines[2];
+
+        tri_new = current;
+        numLines += 3;
     }
 
     if (feof(fp_inp))
       break;
+  }
+
+  fprintf(fp_out, "MODEL");
+  fwrite(&numLines, sizeof(unsigned int), 1, fp_out);
+
+  struct triangle* ptr = tri_start;
+  while (ptr) {
+    fwrite(&(ptr->line1), sizeof(struct line), 1, fp_out);
+    fwrite(&(ptr->line2), sizeof(struct line), 1, fp_out);
+    fwrite(&(ptr->line3), sizeof(struct line), 1, fp_out);
+    
+    ptr = ptr->next;
   }
 
   return 0;
